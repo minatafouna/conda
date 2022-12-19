@@ -1,0 +1,49 @@
+# 获取html
+def getHTMLText(url):
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.62 Safari/537.36'
+    }
+    try:
+        r = requests.get(url, headers=headers)
+        r.raise_for_status()
+        r.encoding = r.apparent_encoding
+        return r.text
+    except RequestException as e:
+        print('error', e)
+
+
+# 解析html
+def analyzeRankHtml(html):
+    html = etree.HTML(html, etree.HTMLParser())
+    uhead = html.xpath('//table[contains(@class,"table-top20")]/thead/tr//text()')
+    ulist = html.xpath('//table[contains(@class,"table-top20")]/tbody/tr//text()')
+    for i in range(7):
+        uhead.remove('\n')
+    uhead.pop(2)
+    # print(uhead)
+    # print(ulist)
+    return uhead, ulist
+
+
+# 获取json
+def getJson(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, features='html.parser')
+    parseText = soup.body
+    # print(parseText)
+    # 定义查找正则表达式，series:开头，中间任意匹配，}\);结尾的文本，后边多一个?表示懒惰模式
+    pattern = re.compile(r"series:(.*?)}\);", re.MULTILINE | re.DOTALL)
+    # 正则表达式匹配查找，group(0) 是获取取得的字符串整体，group(1)是取出括号里面我们要匹配的内容
+    languageRank = pattern.search(str(parseText)).group(1)
+    # print(languageRank)
+    languageRank = languageRank.replace('\n', '').replace('\r', '').replace(" ", "").replace("\t", "")
+    # print(languageRank)
+    # 定义替换正则表达式，series:开头，中间任意匹配，}\);结尾的文本
+    # JavaScript Date.UTC 表示月份的整数，介于 0 ~ 11。
+    languageRank = languageRank.replace('Date.UTC(', '"').replace(')', '"')
+    jsonRank = demjson.decode(languageRank)
+    # printList(jsonRank)
+    # print(jsonRank[0].get("name"))
+    # print(jsonRank[0].get("data")[10])
+    # 接下来继续处理与展示
+    return jsonRank
